@@ -6,14 +6,8 @@ local TAGS_KEYWORD = "tags:"
 -- Returns true if the line is a standalone code fence (``` or ~~~~)
 local function contains_code_block_separator(line)
   local stripped = line:match("^%s*(.-)%s*$")
-  -- Must start with ``` or ~~~~
   local fence = stripped:match("^(`+)") or stripped:match("^(~+)")
-  if not fence then return false end
-  if #fence < 3 then return false end
-  -- For backtick fences the opening must be exactly one run (no closing ``` on same line unless it's an info string)
-  -- Count total occurrences of the fence char to detect inline code like `code`
-  -- We allow info strings after the fence, so just check it starts with the fence
-  return true
+  return fence ~= nil and #fence >= 3
 end
 
 -- Extract options after a keyword (e.g. "tangle:foo,bar" → {"foo", "bar"})
@@ -38,9 +32,7 @@ local function should_include_block(tags_to_include, options)
   local tags = options.tags
   if not tags or #tags == 0 then return true end
   for _, tag in ipairs(tags) do
-    for _, include in ipairs(tags_to_include) do
-      if tag == include then return true end
-    end
+    if vim.tbl_contains(tags_to_include, tag) then return true end
   end
   return false
 end

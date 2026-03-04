@@ -45,9 +45,7 @@ end
 --   verbose      bool    print output via vim.notify
 --   force        bool    skip overwrite prompt
 --   block_padding int    N newlines between blocks
---   _pending     table   internal: {path, value} pairs waiting for confirmation
--- Because vim.ui.input is async, we process each file that already doesn't
--- exist synchronously, then process existing files one-by-one via recursion.
+-- Because vim.ui.input is async, files are processed one-by-one via recursion.
 local function write_files(entries, opts, index)
   index = index or 1
   if index > #entries then return end
@@ -65,8 +63,7 @@ local function write_files(entries, opts, index)
     end
     vim.fn.writefile(lines, path)
     if opts.verbose then
-      local line_count = #lines
-      vim.notify(string.format("%-50s %d lines", path, line_count), vim.log.levels.INFO)
+      vim.notify(string.format("%-50s %d lines", path, #lines), vim.log.levels.INFO)
     end
     write_files(entries, opts, index + 1)
   end

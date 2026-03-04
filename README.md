@@ -134,18 +134,7 @@ Via the Lua API:
 require("md-tangle").insert_block()
 ```
 
-Add a keymap scoped to Markdown files:
-
-```lua
-vim.api.nvim_create_autocmd("FileType", {
-  pattern = "markdown",
-  callback = function()
-    local md = require("md-tangle")
-    vim.keymap.set("n", "<leader>ti", md.insert_block,
-      { buffer = true, desc = "Insert tangle code block" })
-  end,
-})
-```
+See [Keymaps](#keymaps) for how to bind this to a key scoped to Markdown files.
 
 ### Keymaps
 
@@ -189,6 +178,7 @@ When using [lazy.nvim](https://github.com/folke/lazy.nvim) the same keymaps can 
       desc = "Insert tangle code block",
     },
     {
+      "<leader>tt",
       function() require("md-tangle").tangle() end,
       ft = "markdown",
       desc = "Tangle current file",
