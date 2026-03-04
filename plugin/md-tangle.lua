@@ -32,6 +32,8 @@ local function parse_args(fargs)
     elseif arg == "-p" or arg == "--block-padding" then
       i = i + 1
       opts.block_padding = tonumber(fargs[i])
+    elseif arg == "-T" or arg == "--prompt-tags" then
+      opts.prompt_tags = true
     end
     i = i + 1
   end

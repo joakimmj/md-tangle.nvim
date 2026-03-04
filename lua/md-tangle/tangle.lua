@@ -27,16 +27,6 @@ local function get_tangle_options(line, separator)
   return { locations = locations, tags = tags }
 end
 
--- Returns true if the block should be included given the tags_to_include list
-local function should_include_block(tags_to_include, options)
-  local tags = options.tags
-  if not tags or #tags == 0 then return true end
-  for _, tag in ipairs(tags) do
-    if vim.tbl_contains(tags_to_include, tag) then return true end
-  end
-  return false
-end
-
 -- Accumulate a code block into code_blocks
 local function add_codeblock(code_blocks, options, current_block)
   if options == nil or current_block == "" then return end
@@ -44,15 +34,35 @@ local function add_codeblock(code_blocks, options, current_block)
     if not code_blocks[location] then
       code_blocks[location] = {}
     end
-    table.insert(code_blocks[location], current_block)
+    table.insert(code_blocks[location], { content = current_block, tags = options.tags })
   end
 end
 
--- Parse a Markdown file and return a table of { path → {block, ...} }
--- @param filename string
--- @param separator string  separator for tangle destinations (default ",")
--- @param tags_to_include table   list of tags to include
-function M.map_md_to_code_blocks(filename, separator, tags_to_include)
+-- Collect all unique tags present in parsed code blocks (sorted).
+-- @param code_blocks table  { path → { {content, tags}, ... } }
+-- @return table  sorted list of unique tag strings
+function M.collect_tags(code_blocks)
+  local seen = {}
+  local tags = {}
+  for _, blocks in pairs(code_blocks) do
+    for _, block in ipairs(blocks) do
+      for _, tag in ipairs(block.tags) do
+        if tag ~= "" and not seen[tag] then
+          seen[tag] = true
+          table.insert(tags, tag)
+        end
+      end
+    end
+  end
+  table.sort(tags)
+  return tags
+end
+
+-- Parse a Markdown file and return a table of { path → { {content, tags}, ... } }
+-- All blocks are returned regardless of tags; filtering is left to the caller.
+-- @param filename  string
+-- @param separator string  separator for tangle destinations/tags
+function M.map_md_to_code_blocks(filename, separator)
   local lines = vim.fn.readfile(filename)
   local options = nil
   local code_blocks = {}
@@ -72,7 +82,7 @@ function M.map_md_to_code_blocks(filename, separator, tags_to_include)
         options = get_tangle_options(line, separator)
         in_block = true
       end
-    elseif in_block and options ~= nil and should_include_block(tags_to_include, options) then
+    elseif in_block and options ~= nil then
       current_block = current_block .. line .. "\n"
     end
   end

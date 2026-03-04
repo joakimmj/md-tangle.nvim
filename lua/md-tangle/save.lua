@@ -84,19 +84,37 @@ local function write_files(entries, opts, index)
   end
 end
 
+-- Returns true if a block should be written given the tags_to_include list.
+-- Untagged blocks are always included.
+local function should_include(block, tags_to_include)
+  if #block.tags == 0 then return true end
+  for _, tag in ipairs(block.tags) do
+    if vim.tbl_contains(tags_to_include, tag) then return true end
+  end
+  return false
+end
+
 -- Entry point: save all code_blocks to their respective files.
--- @param code_blocks table   { path → {block_string, ...} }
--- @param opts table          { verbose, force, block_padding }
+-- @param code_blocks table   { path → { {content, tags}, ... } }
+-- @param opts table          { verbose, force, block_padding, tags_to_include }
 function M.save_to_file(code_blocks, opts)
   opts = opts or {}
+  local tags_to_include = opts.tags_to_include or {}
   local block_padding = opts.block_padding or 0
   local separator = string.rep("\n", block_padding)
 
   local entries = {}
   for path, blocks in pairs(code_blocks) do
     path = vim.fn.expand(path)
-    local value = table.concat(blocks, separator)
-    table.insert(entries, { path = path, value = value })
+    local filtered = {}
+    for _, block in ipairs(blocks) do
+      if should_include(block, tags_to_include) then
+        table.insert(filtered, block.content)
+      end
+    end
+    if #filtered > 0 then
+      table.insert(entries, { path = path, value = table.concat(filtered, separator) })
+    end
   end
 
   if #entries == 0 then

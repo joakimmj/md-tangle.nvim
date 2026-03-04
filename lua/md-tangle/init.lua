@@ -3,6 +3,32 @@ local save = require("md-tangle.save")
 
 local M = {}
 
+-- Prompt the user to select tags from available_tags synchronously.
+-- Returns the selected tags (empty table if none chosen or cancelled).
+-- @param available_tags table   sorted list of tag strings
+-- @param separator      string  separator for parsing a specific-tags answer
+-- @return table  tags_to_include
+local function prompt_tags(available_tags, separator)
+  local ok, input = pcall(vim.fn.input, {
+    prompt = string.format(
+      "Tags [%s] (y=all, tag%stag=specific, default=none): ",
+      table.concat(available_tags, ", "),
+      separator
+    ),
+    cancelreturn = "\0",
+  })
+  if not ok or input == "\0" then
+    return {}
+  end
+  if input:lower() == "y" then
+    return available_tags
+  end
+  if input ~= "" then
+    return vim.split(input, separator, { plain = true })
+  end
+  return {}
+end
+
 --- Default configuration
 M.config = {
   force = false,
@@ -12,6 +38,7 @@ M.config = {
   separator = ",",
   block_padding = 0,
   auto_tangle = false,
+  prompt_tags = false,
 }
 
 --- Setup the plugin with user configuration.
@@ -48,12 +75,7 @@ function M.tangle(opts)
     return
   end
 
-  local tags_to_include = {}
-  if opts.include and opts.include ~= "" then
-    tags_to_include = vim.split(opts.include, ",", { plain = true })
-  end
-
-  local blocks = tangle.map_md_to_code_blocks(filename, opts.separator, tags_to_include)
+  local blocks = tangle.map_md_to_code_blocks(filename, opts.separator)
 
   if vim.tbl_isempty(blocks) then
     vim.notify("md-tangle: Found no blocks to tangle.", vim.log.levels.WARN)
@@ -64,10 +86,21 @@ function M.tangle(opts)
     blocks = save.override_output_dest(blocks, opts.destination)
   end
 
+  local tags_to_include = {}
+  if opts.include and opts.include ~= "" then
+    tags_to_include = vim.split(opts.include, ",", { plain = true })
+  elseif opts.prompt_tags then
+    local available_tags = tangle.collect_tags(blocks)
+    if #available_tags > 0 then
+      tags_to_include = prompt_tags(available_tags, opts.separator)
+    end
+  end
+
   save.save_to_file(blocks, {
     verbose = opts.verbose,
     force = opts.force,
     block_padding = opts.block_padding,
+    tags_to_include = tags_to_include,
   })
 end
 

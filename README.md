@@ -53,6 +53,7 @@ require("md-tangle").setup({
   separator     = ",",     -- separator for tangle destinations/tags
   block_padding = 0,       -- N newlines between code blocks in output
   auto_tangle   = false,   -- auto-tangle *.md files on BufWritePost
+  prompt_tags   = false,   -- prompt to include each tag when no -i is given
 })
 ```
 
@@ -74,6 +75,7 @@ Tangles the current buffer's Markdown file. All options are optional and mirror 
 | `-i` / `--include <tags>` | `-i` | Include tagged blocks (comma-separated) |
 | `-s` / `--separator <sep>` | `-s` | Separator for destinations/tags (default `,`) |
 | `-p` / `--block-padding <N>` | `-p` | Add N newlines between blocks (default `0`) |
+| `-T` / `--prompt-tags` | `-T` | Prompt to include each tag (when no `-i` given) |
 
 **Examples:**
 
