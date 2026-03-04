@@ -108,6 +108,45 @@ require("md-tangle").tangle({
 })
 ```
 
+### Inserting a new code block
+
+`:MdTangleInsert` opens a sequence of prompts to build and insert a tangle code block at the current cursor position:
+
+1. **Language** — syntax identifier for the fence (e.g. `python`, `lua`; leave blank to omit)
+2. **Tangle destination(s)** — file path(s) to write to (e.g. `src/main.py` or `a.css,b.css`)
+3. **Tags** *(optional)* — space the block behind a tag (e.g. `theme`; leave blank to omit)
+
+The block is inserted after the current line and the cursor is placed inside it in insert mode:
+
+````markdown
+```python tangle:src/main.py
+<cursor here>
+```
+````
+
+```vim
+:MdTangleInsert
+```
+
+Via the Lua API:
+
+```lua
+require("md-tangle").insert_block()
+```
+
+Add a keymap scoped to Markdown files:
+
+```lua
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = "markdown",
+  callback = function()
+    local md = require("md-tangle")
+    vim.keymap.set("n", "<leader>ti", md.insert_block,
+      { buffer = true, desc = "Insert tangle code block" })
+  end,
+})
+```
+
 ### Keymaps
 
 Use `vim.keymap.set` with `{ buffer = true }` inside a `FileType` autocmd to scope keymaps to Markdown files only.
@@ -117,6 +156,11 @@ vim.api.nvim_create_autocmd("FileType", {
   pattern = "markdown",
   callback = function()
     local md = require("md-tangle")
+
+    -- <leader>ti — insert a new tangle code block
+    vim.keymap.set("n", "<leader>ti", function()
+      md.insert_block()
+    end, { buffer = true, desc = "Insert tangle code block" })
 
     -- <leader>tt — tangle current file
     vim.keymap.set("n", "<leader>tt", function()
@@ -139,7 +183,12 @@ When using [lazy.nvim](https://github.com/folke/lazy.nvim) the same keymaps can 
   ft = "markdown",
   keys = {
     {
-      "<leader>tt",
+      "<leader>ti",
+      function() require("md-tangle").insert_block() end,
+      ft = "markdown",
+      desc = "Insert tangle code block",
+    },
+    {
       function() require("md-tangle").tangle() end,
       ft = "markdown",
       desc = "Tangle current file",

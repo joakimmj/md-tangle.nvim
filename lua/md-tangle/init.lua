@@ -72,4 +72,47 @@ function M.tangle(opts)
   })
 end
 
+--- Interactively insert a new tangle code block at the current cursor position.
+-- Prompts for: language, tangle destination(s), and optional tags.
+-- The block is inserted after the current line with the cursor placed inside it.
+function M.insert_block()
+  local buf = vim.api.nvim_get_current_buf()
+
+  local function do_insert(lang, destinations, tags)
+    -- Build the opening fence info string
+    local info = (lang ~= "" and lang .. " " or "")
+      .. "tangle:" .. destinations
+      .. (tags ~= "" and " tags:" .. tags or "")
+
+    local lines = {
+      "```" .. info,
+      "",
+      "```",
+    }
+
+    local row = vim.api.nvim_win_get_cursor(0)[1] -- 1-based
+    vim.api.nvim_buf_set_lines(buf, row, row, false, lines)
+    -- Place cursor on the empty line inside the block
+    vim.api.nvim_win_set_cursor(0, { row + 2, 0 })
+    vim.cmd("startinsert")
+  end
+
+  -- Chain prompts: language → destinations → tags
+  vim.ui.input({ prompt = "Language: " }, function(lang)
+    if lang == nil then return end -- cancelled
+    lang = vim.trim(lang)
+
+    vim.ui.input({ prompt = "Tangle destination(s): " }, function(destinations)
+      if destinations == nil or vim.trim(destinations) == "" then return end
+      destinations = vim.trim(destinations)
+
+      vim.ui.input({ prompt = "Tags (optional): " }, function(tags)
+        if tags == nil then return end -- cancelled
+        tags = vim.trim(tags)
+        do_insert(lang, destinations, tags)
+      end)
+    end)
+  end)
+end
+
 return M

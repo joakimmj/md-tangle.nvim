@@ -42,6 +42,13 @@ local function parse_args(fargs)
   return opts
 end
 
+vim.api.nvim_create_user_command("MdTangleInsert", function()
+  md_tangle.insert_block()
+end, {
+  nargs = 0,
+  desc = "Interactively insert a new tangle code block",
+})
+
 vim.api.nvim_create_user_command("MdTangle", function(cmd)
   local opts = parse_args(cmd.fargs)
   md_tangle.tangle(opts)
