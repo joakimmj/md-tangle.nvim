@@ -21,6 +21,7 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
 ```lua
 {
   "joakimmj/md-tangle.nvim",
+  ft = "markdown",
   config = function()
     require("md-tangle").setup()
   end,
@@ -32,6 +33,7 @@ Using [packer.nvim](https://github.com/wbthomason/packer.nvim):
 ```lua
 use {
   "joakimmj/md-tangle.nvim",
+  ft = "markdown",
   config = function()
     require("md-tangle").setup()
   end,
@@ -59,10 +61,10 @@ require("md-tangle").setup({
 ### Command
 
 ```
-:MdTangle [options] [filename]
+:MdTangle [options]
 ```
 
-Tangles the current buffer's file (or the given `filename`). All options are optional and mirror the CLI flags:
+Tangles the current buffer's Markdown file. All options are optional and mirror the CLI flags:
 
 | Option | CLI equivalent | Description |
 |---|---|---|
@@ -82,9 +84,6 @@ Tangles the current buffer's file (or the given `filename`). All options are opt
 " Force-overwrite and show output
 :MdTangle -f -v
 
-" Tangle a specific file
-:MdTangle ~/docs/setup.md
-
 " Include tagged blocks and write to a different root
 :MdTangle -i theme -d /tmp/out
 
@@ -100,7 +99,6 @@ require("md-tangle").tangle()
 
 -- Tangle with per-call overrides
 require("md-tangle").tangle({
-  filename      = "~/docs/setup.md",
   force         = true,
   verbose       = true,
   include       = "theme,extra",

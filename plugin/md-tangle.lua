@@ -11,7 +11,6 @@ local md_tangle = require("md-tangle")
 --   -i / --include <tags>
 --   -s / --separator <sep>
 --   -p / --block-padding <N>
---   <filename>   (positional, optional)
 local function parse_args(fargs)
   local opts = {}
   local i = 1
@@ -33,9 +32,6 @@ local function parse_args(fargs)
     elseif arg == "-p" or arg == "--block-padding" then
       i = i + 1
       opts.block_padding = tonumber(fargs[i])
-    else
-      -- Positional: treat as filename
-      opts.filename = arg
     end
     i = i + 1
   end
@@ -54,6 +50,5 @@ vim.api.nvim_create_user_command("MdTangle", function(cmd)
   md_tangle.tangle(opts)
 end, {
   nargs = "*",
-  complete = "file",
-  desc = "Tangle code blocks from the current (or given) Markdown file",
+  desc = "Tangle code blocks from the current Markdown file",
 })

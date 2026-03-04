@@ -23,17 +23,16 @@ function M.setup(opts)
     vim.api.nvim_create_autocmd("BufWritePost", {
       group = vim.api.nvim_create_augroup("MdTangle", { clear = true }),
       pattern = { "*.md" },
-      callback = function(ev)
-        M.tangle({ filename = ev.file })
+      callback = function()
+        M.tangle()
       end,
       desc = "md-tangle: auto-tangle on save",
     })
   end
 end
 
---- Tangle a Markdown file.
+--- Tangle the current buffer's Markdown file.
 -- @param opts table  Optional overrides for this call:
---   filename      string   path to file (defaults to current buffer's file)
 --   force         bool     force overwrite
 --   verbose       bool     show output
 --   destination   string   override output root directory
@@ -43,7 +42,7 @@ end
 function M.tangle(opts)
   opts = vim.tbl_deep_extend("force", M.config, opts or {})
 
-  local filename = opts.filename or vim.api.nvim_buf_get_name(0)
+  local filename = vim.api.nvim_buf_get_name(0)
   if filename == "" then
     vim.notify("md-tangle: No file associated with buffer.", vim.log.levels.ERROR)
     return
