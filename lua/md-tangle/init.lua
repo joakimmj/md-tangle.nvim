@@ -113,7 +113,8 @@ function M.insert_block()
   local function do_insert(lang, destinations, tags)
     -- Build the opening fence info string
     local info = (lang ~= "" and lang .. " " or "")
-      .. "tangle:" .. destinations
+      .. "tangle:"
+      .. destinations
       .. (tags ~= "" and " tags:" .. tags or "")
 
     local lines = {
@@ -131,15 +132,21 @@ function M.insert_block()
 
   -- Chain prompts: language → destinations → tags
   vim.ui.input({ prompt = "Language: " }, function(lang)
-    if lang == nil then return end -- cancelled
+    if lang == nil then
+      return
+    end -- cancelled
     lang = vim.trim(lang)
 
     vim.ui.input({ prompt = "Tangle destination(s): " }, function(destinations)
-      if destinations == nil or vim.trim(destinations) == "" then return end
+      if destinations == nil or vim.trim(destinations) == "" then
+        return
+      end
       destinations = vim.trim(destinations)
 
       vim.ui.input({ prompt = "Tags (optional): " }, function(tags)
-        if tags == nil then return end -- cancelled
+        if tags == nil then
+          return
+        end -- cancelled
         tags = vim.trim(tags)
         do_insert(lang, destinations, tags)
       end)

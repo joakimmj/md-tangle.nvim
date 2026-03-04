@@ -20,7 +20,9 @@ function M.override_output_dest(code_blocks, output_dest)
   for _, p in ipairs(paths) do
     while common ~= "" and p:sub(1, #common) ~= common do
       common = vim.fn.fnamemodify(common, ":h")
-      if common == "." then common = "" end
+      if common == "." then
+        common = ""
+      end
     end
   end
 
@@ -48,7 +50,9 @@ end
 -- Because vim.ui.input is async, files are processed one-by-one via recursion.
 local function write_files(entries, opts, index)
   index = index or 1
-  if index > #entries then return end
+  if index > #entries then
+    return
+  end
 
   local entry = entries[index]
   local path = entry.path
@@ -69,16 +73,13 @@ local function write_files(entries, opts, index)
   end
 
   if vim.fn.filereadable(path) == 1 and not opts.force then
-    vim.ui.input(
-      { prompt = string.format("'%s' already exists. Overwrite? (Y/n) ", path) },
-      function(input)
-        if input == nil or (input ~= "" and input:lower() ~= "y") then
-          write_files(entries, opts, index + 1)
-        else
-          do_write()
-        end
+    vim.ui.input({ prompt = string.format("'%s' already exists. Overwrite? (Y/n) ", path) }, function(input)
+      if input == nil or (input ~= "" and input:lower() ~= "y") then
+        write_files(entries, opts, index + 1)
+      else
+        do_write()
       end
-    )
+    end)
   else
     do_write()
   end
@@ -87,9 +88,13 @@ end
 -- Returns true if a block should be written given the tags_to_include list.
 -- Untagged blocks are always included.
 local function should_include(block, tags_to_include)
-  if #block.tags == 0 then return true end
+  if #block.tags == 0 then
+    return true
+  end
   for _, tag in ipairs(block.tags) do
-    if vim.tbl_contains(tags_to_include, tag) then return true end
+    if vim.tbl_contains(tags_to_include, tag) then
+      return true
+    end
   end
   return false
 end

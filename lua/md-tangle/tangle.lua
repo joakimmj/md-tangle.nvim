@@ -14,7 +14,9 @@ end
 local function get_cmd_options(line, keyword, separator)
   local pattern = keyword .. "([^%s]+)"
   local match = line:match(pattern)
-  if not match then return nil end
+  if not match then
+    return nil
+  end
   local options = vim.split(match, separator, { plain = true })
   return options
 end
@@ -22,14 +24,18 @@ end
 -- Returns tangle options table or nil if no tangle keyword
 local function get_tangle_options(line, separator)
   local locations = get_cmd_options(line, TANGLE_KEYWORD, separator)
-  if locations == nil then return nil end
+  if locations == nil then
+    return nil
+  end
   local tags = get_cmd_options(line, TAGS_KEYWORD, separator) or {}
   return { locations = locations, tags = tags }
 end
 
 -- Accumulate a code block into code_blocks
 local function add_codeblock(code_blocks, options, current_block)
-  if options == nil or current_block == "" then return end
+  if options == nil or current_block == "" then
+    return
+  end
   for _, location in ipairs(options.locations) do
     if not code_blocks[location] then
       code_blocks[location] = {}
