@@ -9,11 +9,15 @@ local function create_dir(path)
 end
 
 -- Override the root of every output path with output_dest.
--- Mirrors the Python override_output_dest logic.
--- @param code_blocks table  { path → {blocks} }
+-- @param sources     table  { blocks = { path → {blocks} }, copy = [{source,destinations,tags}] }
 -- @param output_dest string
-function M.override_output_dest(code_blocks, output_dest)
-  local paths = vim.tbl_keys(code_blocks)
+function M.override_output_dest(sources, output_dest)
+  local paths = vim.tbl_keys(sources.blocks)
+  for _, op in ipairs(sources.copy) do
+    for _, dest in ipairs(op.destinations) do
+      table.insert(paths, dest)
+    end
+  end
 
   -- Find common path prefix
   local common = paths[1] or ""
@@ -26,8 +30,7 @@ function M.override_output_dest(code_blocks, output_dest)
     end
   end
 
-  local result = {}
-  for path, blocks in pairs(code_blocks) do
+  local function remap(path)
     local filename = vim.fn.fnamemodify(path, ":t")
     local dir = vim.fn.fnamemodify(path, ":h")
     local new_dir
@@ -37,9 +40,24 @@ function M.override_output_dest(code_blocks, output_dest)
       -- Replace common prefix with output_dest
       new_dir = output_dest .. dir:sub(#common + 1)
     end
-    result[new_dir .. "/" .. filename] = blocks
+    return new_dir .. "/" .. filename
   end
-  return result
+
+  local new_blocks = {}
+  for path, blocks in pairs(sources.blocks) do
+    new_blocks[remap(path)] = blocks
+  end
+
+  local new_copy = {}
+  for _, op in ipairs(sources.copy) do
+    local new_dests = {}
+    for _, dest in ipairs(op.destinations) do
+      table.insert(new_dests, remap(dest))
+    end
+    table.insert(new_copy, { source = op.source, destinations = new_dests, tags = op.tags })
+  end
+
+  return { blocks = new_blocks, copy = new_copy }
 end
 
 -- Write code_blocks to files.
@@ -67,13 +85,13 @@ local function write_files(entries, opts, index)
     end
     vim.fn.writefile(lines, path)
     if opts.verbose then
-      vim.notify(string.format("%-50s %d lines", path, #lines), vim.log.levels.INFO)
+      vim.notify(string.format("%-50s %d lines", vim.fn.fnamemodify(path, ":~:."), #lines), vim.log.levels.INFO)
     end
     write_files(entries, opts, index + 1)
   end
 
   if vim.fn.filereadable(path) == 1 and not opts.force then
-    vim.ui.input({ prompt = string.format("'%s' already exists. Overwrite? (Y/n) ", path) }, function(input)
+    vim.ui.input({ prompt = string.format("'%s' already exists. Overwrite? (Y/n) ", vim.fn.fnamemodify(path, ":~:.")) }, function(input)
       if input == nil or (input ~= "" and input:lower() ~= "y") then
         write_files(entries, opts, index + 1)
       else
@@ -99,10 +117,57 @@ local function should_include(block, tags_to_include)
   return false
 end
 
+-- Copy files, one-by-one via recursion (mirrors write_files).
+local function do_copy_files(entries, opts, index)
+  index = index or 1
+  if index > #entries then
+    return
+  end
+
+  local entry = entries[index]
+  local src = entry.src
+  local dest = entry.dest
+
+  local function do_copy()
+    if vim.fn.filereadable(src) ~= 1 then
+      vim.notify(string.format("cp %s -> %s failed", vim.fn.fnamemodify(src, ":t"), vim.fn.fnamemodify(dest, ":~:.")), vim.log.levels.ERROR)
+      do_copy_files(entries, opts, index + 1)
+      return
+    end
+    create_dir(dest)
+    local uv = vim.uv or vim.loop
+    local ok, err = uv.fs_copyfile(src, dest)
+    if not ok then
+      vim.notify(string.format("cp %s -> %s failed",
+        vim.fn.fnamemodify(src, ":t"),
+        vim.fn.fnamemodify(dest, ":~:.")), vim.log.levels.ERROR)
+    elseif opts.verbose then
+      vim.api.nvim_echo({{ string.format("cp %s -> %s",
+        vim.fn.fnamemodify(src, ":t"),
+        vim.fn.fnamemodify(dest, ":~:.")) }}, false, {})
+    end
+    do_copy_files(entries, opts, index + 1)
+  end
+
+  if vim.fn.filereadable(dest) == 1 and not opts.force then
+    vim.ui.input({ prompt = string.format("cp %s -> %s. Already exists. Overwrite? (Y/n) ",
+      vim.fn.fnamemodify(src, ":t"),
+      vim.fn.fnamemodify(dest, ":~:.")) }, function(input)
+      if input == nil or (input ~= "" and input:lower() ~= "y") then
+        do_copy_files(entries, opts, index + 1)
+      else
+        do_copy()
+      end
+    end)
+  else
+    do_copy()
+  end
+end
+
 -- Entry point: save all code_blocks to their respective files.
 -- @param code_blocks table   { path → { {content, tags}, ... } }
 -- @param opts table          { verbose, force, block_padding, tags_to_include }
-function M.save_to_file(code_blocks, opts)
+function M.save_blocks(code_blocks, opts)
   opts = opts or {}
   local tags_to_include = opts.tags_to_include or {}
   local block_padding = opts.block_padding or 0
@@ -128,6 +193,29 @@ function M.save_to_file(code_blocks, opts)
   end
 
   write_files(entries, opts, 1)
+end
+
+-- Copy files to their destinations, in document order.
+-- @param copy_ops table  { { source, destinations, tags }, ... }
+-- @param opts     table  { verbose, force, tags_to_include }
+function M.copy_files(copy_ops, opts)
+  opts = opts or {}
+  local tags_to_include = opts.tags_to_include or {}
+
+  local entries = {}
+  for _, op in ipairs(copy_ops) do
+    if should_include(op, tags_to_include) then
+      for _, dest in ipairs(op.destinations) do
+        table.insert(entries, { src = op.source, dest = vim.fn.expand(dest) })
+      end
+    end
+  end
+
+  if #entries == 0 then
+    return
+  end
+
+  do_copy_files(entries, opts, 1)
 end
 
 return M

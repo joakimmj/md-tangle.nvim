@@ -75,28 +75,34 @@ function M.tangle(opts)
     return
   end
 
-  local blocks = tangle.map_md_to_code_blocks(filename, opts.separator)
+  local sources = tangle.get_tangle_sources(filename, opts.separator)
 
-  if vim.tbl_isempty(blocks) then
-    vim.notify("md-tangle: Found no blocks to tangle.", vim.log.levels.WARN)
+  if vim.tbl_isempty(sources.blocks) and #sources.copy == 0 then
+    vim.notify("md-tangle: Found nothing to tangle.", vim.log.levels.WARN)
     return
   end
 
   if opts.destination then
-    blocks = save.override_output_dest(blocks, opts.destination)
+    sources = save.override_output_dest(sources, opts.destination)
   end
 
   local tags_to_include = {}
   if opts.include and opts.include ~= "" then
     tags_to_include = vim.split(opts.include, ",", { plain = true })
   elseif opts.prompt_tags then
-    local available_tags = tangle.collect_tags(blocks)
+    local available_tags = tangle.collect_tags(sources)
     if #available_tags > 0 then
       tags_to_include = prompt_tags(available_tags, opts.separator)
     end
   end
 
-  save.save_to_file(blocks, {
+  save.copy_files(sources.copy, {
+    verbose = opts.verbose,
+    force = opts.force,
+    tags_to_include = tags_to_include,
+  })
+
+  save.save_blocks(sources.blocks, {
     verbose = opts.verbose,
     force = opts.force,
     block_padding = opts.block_padding,

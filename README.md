@@ -10,6 +10,7 @@ Tangle code blocks from Markdown files to their destination files, directly from
 - Supports ` ``` ` and `~~~~` code fence delimiters
 - `tangle:<path>` — write block to one or more files
 - `tags:<tag>` — conditionally include blocks
+- `TANGLE_CP` — copy files as part of a tangle run
 - Overwrite prompt via `vim.ui.input`
 - Verbose output via `vim.notify`
 - Optional auto-tangle on save
@@ -227,6 +228,38 @@ print("Hello, world")
 ````
 
 Tangle ` ``` ` or `~~~~` fences are both supported.
+
+### Copying files (`TANGLE_CP`)
+
+In addition to tangling code blocks, you can copy arbitrary files as part of a tangle run using an HTML comment directive. Because it is an HTML comment, it is invisible in all Markdown previewers.
+
+```markdown
+<!-- TANGLE_CP:<source> tangle:<dest1>,<dest2> -->
+```
+
+- **`<source>`** — path to the file to copy (relative to the markdown file's location)
+- **`tangle:<dest1>,<dest2>`** — one or more destination paths (also relative to the markdown file), separated by the configured separator
+
+**Examples:**
+
+````markdown
+<!-- TANGLE_CP:assets/wallpaper.png tangle:~/.config/wallpaper.png -->
+
+<!-- TANGLE_CP:../shared/wallpaper.png tangle:wallpaper.png,img/wall.png -->
+````
+
+Copy directives support `tags:` exactly like code blocks — untagged directives always run, tagged ones are filtered by `-i` / `--include` / `prompt_tags`:
+
+````markdown
+<!-- TANGLE_CP:assets/dark-wall.png tangle:~/.config/wallpaper.png tags:dark -->
+<!-- TANGLE_CP:assets/light-wall.png tangle:~/.config/wallpaper.png tags:light -->
+````
+
+```vim
+:MdTangle -i dark
+```
+
+Copy operations respect the same `--force` / overwrite prompt and `--verbose` flags as code block tangling.
 
 ## License
 

@@ -2,6 +2,7 @@ local M = {}
 
 local TANGLE_KEYWORD = "tangle:"
 local TAGS_KEYWORD = "tags:"
+local COPY_KEYWORD = "TANGLE_CP:"
 
 -- Resolve a path relative to a base directory; absolute paths are left unchanged.
 local function resolve_path(base_dir, path)
@@ -55,13 +56,31 @@ local function add_codeblock(code_blocks, options, current_block)
   end
 end
 
+-- Returns copy op table or nil if no TANGLE_CP keyword
+-- Format: <!-- TANGLE_CP:<source> tangle:<dest1>,<dest2> [tags:<tag1>,<tag2>] -->
+local function get_copy_op(line, separator, md_dir)
+  local source = line:match("<!%-%-.-" .. COPY_KEYWORD .. "(%S+)")
+  if source == nil then
+    return nil
+  end
+  local destinations = get_cmd_options(line, TANGLE_KEYWORD, separator)
+  if destinations == nil then
+    return nil
+  end
+  for i, dest in ipairs(destinations) do
+    destinations[i] = resolve_path(md_dir, dest)
+  end
+  local tags = get_cmd_options(line, TAGS_KEYWORD, separator) or {}
+  return { source = resolve_path(md_dir, source), destinations = destinations, tags = tags }
+end
+
 -- Collect all unique tags present in parsed code blocks (sorted).
--- @param code_blocks table  { path → { {content, tags}, ... } }
+-- @param sources table  { blocks = { path → [{content,tags}] }, copy = [{source,destinations,tags}] }
 -- @return table  sorted list of unique tag strings
-function M.collect_tags(code_blocks)
+function M.collect_tags(sources)
   local seen = {}
   local tags = {}
-  for _, blocks in pairs(code_blocks) do
+  for _, blocks in pairs(sources.blocks) do
     for _, block in ipairs(blocks) do
       for _, tag in ipairs(block.tags) do
         if tag ~= "" and not seen[tag] then
@@ -71,19 +90,31 @@ function M.collect_tags(code_blocks)
       end
     end
   end
+  for _, op in ipairs(sources.copy) do
+    for _, tag in ipairs(op.tags) do
+      if tag ~= "" and not seen[tag] then
+        seen[tag] = true
+        table.insert(tags, tag)
+      end
+    end
+  end
   table.sort(tags)
   return tags
 end
 
--- Parse a Markdown file and return a table of { path → { {content, tags}, ... } }
--- All blocks are returned regardless of tags; filtering is left to the caller.
+-- Parse a Markdown file and return:
+--   {
+--     blocks = { [dest_path] = { {content, tags}, ... } },
+--     copy   = { { source, destinations, tags }, ... },  -- in document order
+--   }
 -- @param filename  string
 -- @param separator string  separator for tangle destinations/tags
-function M.map_md_to_code_blocks(filename, separator)
+function M.get_tangle_sources(filename, separator)
   local lines = vim.fn.readfile(filename)
   local md_dir = vim.fn.fnamemodify(filename, ":h")
   local options = nil
   local code_blocks = {}
+  local copy_ops = {}
   local current_block = ""
   local in_block = false
 
@@ -102,13 +133,18 @@ function M.map_md_to_code_blocks(filename, separator)
       end
     elseif in_block and options ~= nil then
       current_block = current_block .. line .. "\n"
+    elseif not in_block then
+      local op = get_copy_op(line, separator, md_dir)
+      if op then
+        table.insert(copy_ops, op)
+      end
     end
   end
 
   -- Handle unclosed block
   add_codeblock(code_blocks, options, current_block)
 
-  return code_blocks
+  return { blocks = code_blocks, copy = copy_ops }
 end
 
 return M
