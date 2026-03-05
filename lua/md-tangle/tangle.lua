@@ -3,6 +3,14 @@ local M = {}
 local TANGLE_KEYWORD = "tangle:"
 local TAGS_KEYWORD = "tags:"
 
+-- Resolve a path relative to a base directory; absolute paths are left unchanged.
+local function resolve_path(base_dir, path)
+  if path:match("^[/~]") then
+    return path
+  end
+  return vim.fn.fnamemodify(base_dir .. "/" .. path, ":p")
+end
+
 -- Returns true if the line is a standalone code fence (``` or ~~~~)
 local function contains_code_block_separator(line)
   local stripped = line:match("^%s*(.-)%s*$")
@@ -22,10 +30,13 @@ local function get_cmd_options(line, keyword, separator)
 end
 
 -- Returns tangle options table or nil if no tangle keyword
-local function get_tangle_options(line, separator)
+local function get_tangle_options(line, separator, md_dir)
   local locations = get_cmd_options(line, TANGLE_KEYWORD, separator)
   if locations == nil then
     return nil
+  end
+  for i, loc in ipairs(locations) do
+    locations[i] = resolve_path(md_dir, loc)
   end
   local tags = get_cmd_options(line, TAGS_KEYWORD, separator) or {}
   return { locations = locations, tags = tags }
@@ -70,6 +81,7 @@ end
 -- @param separator string  separator for tangle destinations/tags
 function M.map_md_to_code_blocks(filename, separator)
   local lines = vim.fn.readfile(filename)
+  local md_dir = vim.fn.fnamemodify(filename, ":h")
   local options = nil
   local code_blocks = {}
   local current_block = ""
@@ -85,7 +97,7 @@ function M.map_md_to_code_blocks(filename, separator)
         in_block = false
       else
         -- opening fence
-        options = get_tangle_options(line, separator)
+        options = get_tangle_options(line, separator, md_dir)
         in_block = true
       end
     elseif in_block and options ~= nil then

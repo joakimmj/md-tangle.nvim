@@ -210,6 +210,8 @@ This adds a `BufWritePost` autocmd for `*.md` files that calls `tangle()` with y
 
 The plugin uses the same syntax as the `md-tangle` CLI.
 
+All paths are resolved relative to the markdown file's location, not the current working directory.
+
 ````markdown
 ```python tangle:src/hello.py
 print("Hello, world")
